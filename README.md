@@ -107,7 +107,7 @@ public struct Person {
 | `appendDo(builder:catches:)` | `do`/`catch` |
 | `appendDefer(builder:)` | `defer` |
 | `appendBlock(header:builder:)` | Generic brace block |
-| `appendClosureBlock(call:parameters:builder:)` | Closure argument |
+| `appendClosureBlock(call:parameterClause:builder:)` | Closure argument |
 | `appendCompilerIf(_:builder:elseBuilder:)` | `#if`/`#else`/`#endif` |
 | `appendReturn(_:)` | `return`/`return expr` |
 | `appendBreak(_:)` / `appendContinue(_:)` | `break`/`continue` with optional label |
@@ -118,11 +118,10 @@ public struct Person {
 | Method | Description |
 |---|---|
 | `append(literal:)` | Plain text segment |
-| `append(literalString:)` | Plain text from `String` |
 | `append(interpolation:)` | `\(variable)` segment |
 | `build()` | Returns `"..."` or `"""..."""` |
 
-Contructor: `SwiftStringBuilder(isMultilineString: false)` — when `true`, produces a `"""` multiline string literal.
+Constructor: `SwiftStringBuilder(isMultilineString: false)` — when `true`, produces a `"""` multiline string literal.
 
 ### Helpers
 
