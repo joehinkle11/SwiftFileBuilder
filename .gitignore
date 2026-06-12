@@ -4,3 +4,4 @@ Package.resolved
 *.swp
 *.swo
 .DS_Store
+.swiftpm/*
