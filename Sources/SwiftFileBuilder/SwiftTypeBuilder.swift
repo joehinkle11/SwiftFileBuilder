@@ -55,6 +55,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
     let kind: Kind
     let accessLevel: AccessLevel?
     let name: String
+    let generics: [SwiftGeneric]
     let inheritedTypes: [String]
     var isFirstCase: Bool = true
     var codeBuilder: SwiftCodeBuilder
@@ -65,6 +66,20 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
             line += accessLevel.rawValue + " "
         }
         line.append("\(kind.stringValue) \(name)")
+        if generics.isEmpty == false {
+            var genericsStr = "<"
+            for (i, generic) in generics.enumerated() {
+                if i > 0 {
+                    genericsStr += ", "
+                }
+                genericsStr += "\(generic.name)"
+                if generic.constraints.isEmpty == false {
+                    genericsStr += ": \(generic.constraints.joined(separator: " & "))"
+                }
+            }
+            genericsStr += ">"
+            line += genericsStr
+        }
         if !inheritedTypes.isEmpty {
             line += ": \(inheritedTypes.joined(separator: ", "))"
         }
@@ -132,7 +147,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         let typeIsFirstCase = self.isFirstCase
         var funcBuilder = SwiftFunctionBuilder(name: "", generics: [], arguments: [], codeBuilder: codeBuilder)
         builder(&funcBuilder)
-        self = SwiftTypeBuilder(kind: kind, accessLevel: accessLevel, name: name, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.codeBuilder)
+        self = SwiftTypeBuilder(kind: kind, accessLevel: accessLevel, name: name, generics: generics, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.codeBuilder)
         codeBuilder.outdent()
         codeBuilder.append(line: "}")
     }
@@ -155,11 +170,12 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
     ) {
         let typeAccessLevel = self.accessLevel
         let typeName = self.name
+        let typeGenerics = self.generics
         let typeIsFirstCase = self.isFirstCase
         var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, accessLevel: accessLevel, isStatic: isStatic, isOverride: isOverride, isConsuming: isConsuming, isMutating: isMutating, isThrowing: isThrowing, isRethrowing: isRethrowing, isAsync: isAsync, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
-        self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.end())
+        self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, generics: typeGenerics, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.end())
     }
 
     public mutating func appendInitializer(
@@ -174,6 +190,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         builder: (inout SwiftFunctionBuilder) -> Void
     ) {
         let typeAccessLevel = self.accessLevel
+        let typeGenerics = self.generics
         let typeIsFirstCase = self.isFirstCase
         let initName = isFailable ? "init?" : "init"
         var modifiers: [String] = []
@@ -184,7 +201,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         funcBuilder.initPrefix = initPrefix
         funcBuilder.start()
         builder(&funcBuilder)
-        self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: name, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.end())
+        self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: name, generics: typeGenerics, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.end())
     }
     
     public mutating func appendTypeAlias(
@@ -200,16 +217,17 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
     ) {
         let typeAccessLevel = self.accessLevel
         let typeName = self.name
+        let typeGenerics = self.generics
         let typeIsFirstCase = self.isFirstCase
         codeBuilder.append(line: "deinit {")
         codeBuilder.indent()
         var funcBuilder = SwiftFunctionBuilder(name: "", generics: [], arguments: [], codeBuilder: codeBuilder)
         builder(&funcBuilder)
-        self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.codeBuilder)
+        self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, generics: typeGenerics, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.codeBuilder)
         codeBuilder.outdent()
         codeBuilder.append(line: "}")
     }
-
+    
     public mutating func appendSubscript(
         accessLevel: AccessLevel? = nil,
         isStatic: Bool = false,
@@ -219,6 +237,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
     ) {
         let typeAccessLevel = self.accessLevel
         let typeName = self.name
+        let typeGenerics = self.generics
         let typeIsFirstCase = self.isFirstCase
         var line = ""
         if let accessLevel { line += accessLevel.rawValue + " " }
@@ -229,7 +248,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         codeBuilder.indent()
         var funcBuilder = SwiftFunctionBuilder(name: "", generics: [], arguments: [], codeBuilder: codeBuilder)
         builder(&funcBuilder)
-        self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.codeBuilder)
+        self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, generics: typeGenerics, inheritedTypes: inheritedTypes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.codeBuilder)
         codeBuilder.outdent()
         codeBuilder.append(line: "}")
     }
@@ -258,6 +277,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         accessLevel: AccessLevel? = nil,
         kind: NestedKind,
         name: String,
+        generics: [SwiftGeneric] = [],
         inheritedTypes: [String] = [],
         builder: (inout SwiftTypeBuilder<NestedKind>) -> Void
     ) {
@@ -266,6 +286,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
             kind: kind,
             accessLevel: accessLevel,
             name: name,
+            generics: generics,
             inheritedTypes: inheritedTypes,
             codeBuilder: codeBuilder
         )
@@ -275,6 +296,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
             kind: self.kind,
             accessLevel: self.accessLevel,
             name: self.name,
+            generics: self.generics,
             inheritedTypes: self.inheritedTypes,
             isFirstCase: typeIsFirstCase,
             codeBuilder: nestedBuilder.end()

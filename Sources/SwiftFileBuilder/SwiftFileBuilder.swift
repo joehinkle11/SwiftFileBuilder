@@ -82,8 +82,8 @@ public struct SwiftFileBuilder: ~Copyable {
         self = SwiftFileBuilder(codeBuilder: funcBuilder.end())
     }
     
-    public mutating func appendType<Kind: SwiftTypeBuilderKind>(accessLevel: AccessLevel? = nil, kind: Kind, name: String, inheritedTypes: [String] = [], builder: (inout SwiftTypeBuilder<Kind>) -> Void) {
-        var typeBuilder = SwiftTypeBuilder(kind: kind, accessLevel: accessLevel, name: name, inheritedTypes: inheritedTypes, codeBuilder: codeBuilder)
+    public mutating func appendType<Kind: SwiftTypeBuilderKind>(accessLevel: AccessLevel? = nil, kind: Kind, name: String, generics: [SwiftGeneric] = [], inheritedTypes: [String] = [], builder: (inout SwiftTypeBuilder<Kind>) -> Void) {
+        var typeBuilder = SwiftTypeBuilder(kind: kind, accessLevel: accessLevel, name: name, generics: generics, inheritedTypes: inheritedTypes, codeBuilder: codeBuilder)
         typeBuilder.start()
         builder(&typeBuilder)
         self = SwiftFileBuilder(codeBuilder: typeBuilder.end())
