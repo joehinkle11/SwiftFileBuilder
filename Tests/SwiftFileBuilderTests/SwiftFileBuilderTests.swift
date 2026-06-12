@@ -144,6 +144,27 @@ struct SwiftFileBuilderTests {
         #expect(result == "import Foundation\n\n// Global constant\nlet version = \"1.0\"\n")
     }
 
+    @Test func spiImport() {
+        var file = SwiftFileBuilder()
+        file.appendImport(module: "Foundation", spi: "Testable")
+        let result = file.finalize()
+        #expect(result == "@_spi(Testable) import Foundation\n")
+    }
+
+    @Test func spiImportSelective() {
+        var file = SwiftFileBuilder()
+        file.appendImport(module: "Foundation", type: "URL", kind: SwiftTypeBuilderStructKind(), spi: "Testable")
+        let result = file.finalize()
+        #expect(result == "@_spi(Testable) import struct Foundation.URL\n")
+    }
+
+    @Test func spiImportMultiple() {
+        var file = SwiftFileBuilder()
+        file.appendImports(modules: ["Foundation", "UIKit"], spi: "Testable")
+        let result = file.finalize()
+        #expect(result == "@_spi(Testable) import Foundation\n@_spi(Testable) import UIKit\n")
+    }
+
     @Test func typeAliasAtFileLevel() {
         var file = SwiftFileBuilder()
         file.appendTypeAlias(accessLevel: .public, name: "StringMap", type: "Dictionary<String, String>")

@@ -5,18 +5,26 @@ public struct SwiftFileBuilder: ~Copyable {
 
     public init() {}
 
-    public mutating func appendImports(modules: [String]) {
+    public mutating func appendImports(modules: [String], spi: String? = nil) {
         for module in modules {
-            appendImport(module: module)
+            appendImport(module: module, spi: spi)
         }
     }
     
-    public mutating func appendImport(module: String) {
-        codeBuilder.append(line: "import \(module)")
+    public mutating func appendImport(module: String, spi: String? = nil) {
+        if let spi {
+            codeBuilder.append(line: "@_spi(\(spi)) import \(module)")
+        } else {
+            codeBuilder.append(line: "import \(module)")
+        }
     }
     
-    public mutating func appendImport<Kind: SwiftTypeBuilderKind>(module: String, type: String, kind: Kind) {
-        codeBuilder.append(line: "import \(kind.stringValue) \(module).\(type)")
+    public mutating func appendImport<Kind: SwiftTypeBuilderKind>(module: String, type: String, kind: Kind, spi: String? = nil) {
+        if let spi {
+            codeBuilder.append(line: "@_spi(\(spi)) import \(kind.stringValue) \(module).\(type)")
+        } else {
+            codeBuilder.append(line: "import \(kind.stringValue) \(module).\(type)")
+        }
     }
     
     public mutating func appendNewline() {
