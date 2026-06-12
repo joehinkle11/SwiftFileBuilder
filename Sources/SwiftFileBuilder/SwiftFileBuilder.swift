@@ -61,6 +61,7 @@ public struct SwiftFileBuilder: ~Copyable {
     }
 
     public mutating func appendFunction(
+        attributes: String? = nil,
         accessLevel: AccessLevel? = nil,
         asGetter: Bool = false,
         isThrowing: Bool = false,
@@ -73,7 +74,7 @@ public struct SwiftFileBuilder: ~Copyable {
         builder: (inout SwiftFunctionBuilder) -> Void,
         variantsBuilder: (inout SwiftVariantsFunctionBuilder) -> Void = { _ in }
     ) {
-        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, accessLevel: accessLevel, isThrowing: isThrowing, isRethrowing: isRethrowing, isAsync: isAsync, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, accessLevel: accessLevel, isThrowing: isThrowing, isRethrowing: isRethrowing, isAsync: isAsync, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         var variants = SwiftVariantsFunctionBuilder(funcBuilder: funcBuilder)
         variantsBuilder(&variants)
         funcBuilder = variants.funcBuilder
@@ -82,8 +83,8 @@ public struct SwiftFileBuilder: ~Copyable {
         self = SwiftFileBuilder(codeBuilder: funcBuilder.end())
     }
     
-    public mutating func appendType<Kind: SwiftTypeBuilderKind>(accessLevel: AccessLevel? = nil, kind: Kind, name: String, generics: [SwiftGeneric] = [], inheritedTypes: [String] = [], builder: (inout SwiftTypeBuilder<Kind>) -> Void) {
-        var typeBuilder = SwiftTypeBuilder(kind: kind, accessLevel: accessLevel, name: name, generics: generics, inheritedTypes: inheritedTypes, codeBuilder: codeBuilder)
+    public mutating func appendType<Kind: SwiftTypeBuilderKind>(attributes: String? = nil, accessLevel: AccessLevel? = nil, kind: Kind, name: String, generics: [SwiftGeneric] = [], inheritedTypes: [String] = [], builder: (inout SwiftTypeBuilder<Kind>) -> Void) {
+        var typeBuilder = SwiftTypeBuilder(kind: kind, accessLevel: accessLevel, name: name, generics: generics, inheritedTypes: inheritedTypes, attributes: attributes, codeBuilder: codeBuilder)
         typeBuilder.start()
         builder(&typeBuilder)
         self = SwiftFileBuilder(codeBuilder: typeBuilder.end())

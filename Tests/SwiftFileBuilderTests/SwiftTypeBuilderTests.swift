@@ -11,6 +11,13 @@ struct SwiftTypeBuilderTests {
         #expect(result == "struct Foo {\n}\n")
     }
 
+    @Test func typeWithAttribute() {
+        var file = SwiftFileBuilder()
+        file.appendType(attributes: "@Observable", kind: .class, name: "MyModel") { _ in }
+        let result = file.finalize()
+        #expect(result == "@Observable class MyModel {\n}\n")
+    }
+
     @Test func emptyActor() {
         var file = SwiftFileBuilder()
         file.appendType(kind: .actor, name: "MyActor") { _ in }
@@ -133,6 +140,17 @@ struct SwiftTypeBuilderTests {
         #expect(result.contains("    @IBOutlet private weak var label: UILabel!"))
     }
 
+    @Test func methodWithAttribute() {
+        var file = SwiftFileBuilder()
+        file.appendType(kind: .class, name: "MyViewController") { type in
+            type.appendMethod(attributes: "@objc", accessLevel: .private, name: "buttonTapped") { fn in
+                fn.append(line: "print(\"tapped\")")
+            }
+        }
+        let result = file.finalize()
+        #expect(result.contains("    @objc private func buttonTapped() {"))
+    }
+
     @Test func methodInType() {
         var file = SwiftFileBuilder()
         file.appendType(kind: .struct, name: "Calculator") { type in
@@ -146,6 +164,19 @@ struct SwiftTypeBuilderTests {
         let result = file.finalize()
         #expect(result.contains("public func add(_ a: Int, _ b: Int) -> Int {"))
         #expect(result.contains("        return a + b"))
+    }
+
+    @Test func initializerWithAttribute() {
+        var file = SwiftFileBuilder()
+        file.appendType(kind: .class, name: "MyClass") { type in
+            type.appendInitializer(attributes: "@objc", accessLevel: .public, arguments: [
+                SwiftFunctionArgument(name: "value", type: "Int"),
+            ]) { fn in
+                fn.append(line: "self.value = value")
+            }
+        }
+        let result = file.finalize()
+        #expect(result.contains("    @objc public init(value: Int) {"))
     }
 
     @Test func initializerInType() {
@@ -197,6 +228,18 @@ struct SwiftTypeBuilderTests {
         #expect(result.contains("    public enum Status: String {"))
         #expect(result.contains("        case active = \"active\""))
         #expect(result.contains("}"))
+    }
+
+    @Test func nestedTypeWithAttribute() {
+        var file = SwiftFileBuilder()
+        file.appendType(kind: .struct, name: "Container") { type in
+            type.appendNestedType(attributes: "@MainActor", kind: .class, name: "ViewModel") { nested in
+                nested.appendStoredProperty(name: "count", type: "Int")
+            }
+        }
+        let result = file.finalize()
+        #expect(result.contains("struct Container {"))
+        #expect(result.contains("    @MainActor class ViewModel {"))
     }
 
     @Test func propertyBlock() {
@@ -736,6 +779,19 @@ struct SwiftTypeBuilderTests {
         let result = file.finalize()
         #expect(result.contains("    private subscript(_ index: Int) -> Int? {"))
         #expect(result.contains("        return items[index]"))
+    }
+
+    @Test func subscriptWithAttribute() {
+        var file = SwiftFileBuilder()
+        file.appendType(accessLevel: .public, kind: .class, name: "DataSource") { type in
+            type.appendSubscript(attributes: "@available(iOS 15.0, *)", accessLevel: .public, arguments: [
+                SwiftFunctionArgument(outerLabel: "_", name: "index", type: "Int"),
+            ], returnType: "String") { fn in
+                fn.appendReturn("\"item\"")
+            }
+        }
+        let result = file.finalize()
+        #expect(result.contains("    @available(iOS 15.0, *) public subscript(_ index: Int) -> String {"))
     }
 
     @Test func subscriptFullOutput() {

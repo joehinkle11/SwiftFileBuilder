@@ -4,6 +4,17 @@ import Testing
 @Suite("SwiftFunctionBuilder")
 struct SwiftFunctionBuilderTests {
 
+    @Test func functionWithAttribute() {
+        var file = SwiftFileBuilder()
+        file.appendFunction(attributes: "@MainActor", accessLevel: .public, name: "updateUI") { fn in
+            fn.append(line: "print(\"updated\")")
+        }
+        let result = file.finalize()
+        #expect(result.contains("@MainActor public func updateUI() {"))
+        #expect(result.contains("    print(\"updated\")"))
+        #expect(result.contains("}"))
+    }
+
     @Test func simpleFunction() {
         var file = SwiftFileBuilder()
         file.appendFunction(accessLevel: .public, name: "greet") { fn in

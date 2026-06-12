@@ -1,6 +1,7 @@
 public struct SwiftFunctionBuilder: ~Copyable {
 
     var asGetter = false
+    var attributes: String?
     var accessLevel: AccessLevel?
     var isStatic = false
     var isOverride = false
@@ -35,6 +36,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
             }
             genericsStr += ">"
         }
+        let attributesStr = attributes.map { "\($0) " } ?? ""
         let accessLevelStr = accessLevel.map { "\($0.rawValue) " } ?? ""
         let nameStr: String
         if name == "init" || name == "init?" {
@@ -48,7 +50,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
         let overrideStr = isOverride ? "override " : ""
         let consumingStr = isConsuming ? "consuming " : ""
         let mutatingStr = isMutating ? "mutating " : ""
-        var line = "\(accessLevelStr)\(overrideStr)\(staticStr)\(consumingStr)\(mutatingStr)\(nameStr)\(genericsStr)"
+        var line = "\(attributesStr)\(accessLevelStr)\(overrideStr)\(staticStr)\(consumingStr)\(mutatingStr)\(nameStr)\(genericsStr)"
         if asGetter {
             guard let returnType else {
                 Swift.assertionFailure("SwiftFunctionBuilder: getter requires an explicit return type. This is a codegen-template bug; check the caller of `appendMethod(asGetter: true, returnType: nil)`.")
@@ -276,11 +278,13 @@ public struct SwiftFunctionBuilder: ~Copyable {
     }
     
     public mutating func appendFunction(
+        attributes: String? = nil,
         name: String,
         generics: [SwiftGeneric] = [],
         arguments: [SwiftFunctionArgument] = [],
         builder: (inout SwiftFunctionBuilder) -> Void
     ) {
+        let outerAttributes = self.attributes
         let outerAsGetter = self.asGetter
         let outerAccessLevel = self.accessLevel
         let outerIsStatic = self.isStatic
@@ -295,11 +299,12 @@ public struct SwiftFunctionBuilder: ~Copyable {
         let outerGenerics = self.generics
         let outerArguments = self.arguments
         let outerReturnType = self.returnType
-        var funcBuilder = SwiftFunctionBuilder(name: name, generics: generics, arguments: arguments, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, name: name, generics: generics, arguments: arguments, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
         self = SwiftFunctionBuilder(
             asGetter: outerAsGetter,
+            attributes: outerAttributes,
             accessLevel: outerAccessLevel,
             isStatic: outerIsStatic,
             isOverride: outerIsOverride,

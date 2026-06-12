@@ -8,6 +8,7 @@ public struct SwiftVariantsFunctionBuilder: ~Copyable {
         )] = [],
         removingGenerics: [String] = [],
     ) {
+        let originalAttributes = funcBuilder.attributes
         let originalAsGetter = funcBuilder.asGetter
         let originalAccessLevel = funcBuilder.accessLevel
         let originalIsStatic = funcBuilder.isStatic
@@ -55,6 +56,7 @@ public struct SwiftVariantsFunctionBuilder: ~Copyable {
         let builder = variantSwiftFunctionBuilder.end()
         self = SwiftVariantsFunctionBuilder(funcBuilder: SwiftFunctionBuilder(
             asGetter: originalAsGetter,
+            attributes: originalAttributes,
             accessLevel: originalAccessLevel,
             isStatic: originalIsStatic,
             isOverride: originalIsOverride,
