@@ -98,6 +98,7 @@ public struct SwiftFileBuilder: ~Copyable {
     }
 
     public mutating func appendVariable(
+        attributes: String? = nil,
         accessLevel: AccessLevel? = nil,
         modifiers: String? = nil,
         isLet: Bool = false,
@@ -106,6 +107,7 @@ public struct SwiftFileBuilder: ~Copyable {
         initialValue: String? = nil
     ) {
         var line = ""
+        if let attributes { line += attributes + " " }
         if let accessLevel { line += accessLevel.rawValue + " " }
         if let modifiers { line += modifiers + " " }
         line += isLet ? "let " : "var "

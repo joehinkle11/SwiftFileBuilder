@@ -115,6 +115,24 @@ struct SwiftTypeBuilderTests {
         #expect(result.contains("    private weak var delegate: Delegate?"))
     }
 
+    @Test func storedPropertyWithAttribute() {
+        var file = SwiftFileBuilder()
+        file.appendType(kind: .class, name: "ViewModel") { type in
+            type.appendStoredProperty(attributes: "@Published", accessLevel: .private, name: "items", type: "[Item]")
+        }
+        let result = file.finalize()
+        #expect(result.contains("    @Published private var items: [Item]"))
+    }
+
+    @Test func storedPropertyWithAttributeAndModifier() {
+        var file = SwiftFileBuilder()
+        file.appendType(kind: .class, name: "VC") { type in
+            type.appendStoredProperty(attributes: "@IBOutlet", accessLevel: .private, modifiers: "weak", name: "label", type: "UILabel!")
+        }
+        let result = file.finalize()
+        #expect(result.contains("    @IBOutlet private weak var label: UILabel!"))
+    }
+
     @Test func methodInType() {
         var file = SwiftFileBuilder()
         file.appendType(kind: .struct, name: "Calculator") { type in

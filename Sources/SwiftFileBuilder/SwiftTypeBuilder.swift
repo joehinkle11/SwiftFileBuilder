@@ -114,6 +114,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
     }
 
     public mutating func appendStoredProperty(
+        attributes: String? = nil,
         accessLevel: AccessLevel? = nil,
         modifiers: String? = nil,
         isLet: Bool = false,
@@ -122,6 +123,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         initialValue: String? = nil
     ) {
         var line = ""
+        if let attributes { line += attributes + " " }
         if let accessLevel { line += accessLevel.rawValue + " " }
         if let modifiers { line += modifiers + " " }
         line += isLet ? "let " : "var "
