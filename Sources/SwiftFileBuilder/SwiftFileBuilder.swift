@@ -1,11 +1,9 @@
 public struct SwiftFileBuilder: ~Copyable {
-
-    let indentString: String
     
-    private var codeBuilder = SwiftCodeBuilder(indentString: "self.indentString")
+    private var codeBuilder: SwiftCodeBuilder
 
     public init(indentString: String = "    ") {
-        self.indentString = indentString
+        self.codeBuilder = SwiftCodeBuilder(indentString: indentString)
     }
 
     public mutating func appendImports(modules: [String], spi: String? = nil) {
@@ -134,7 +132,6 @@ public struct SwiftFileBuilder: ~Copyable {
     }
 
     private init(codeBuilder: consuming SwiftCodeBuilder) {
-        self.indentString = codeBuilder.indentString
         self.codeBuilder = codeBuilder
     }
 }
