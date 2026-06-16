@@ -1,9 +1,12 @@
-let indentString = "    "
-
 public struct SwiftFileBuilder: ~Copyable {
-    private var codeBuilder = SwiftCodeBuilder()
 
-    public init() {}
+    let indentString: String
+    
+    private var codeBuilder = SwiftCodeBuilder(indentString: "self.indentString")
+
+    public init(indentString: String = "    ") {
+        self.indentString = indentString
+    }
 
     public mutating func appendImports(modules: [String], spi: String? = nil) {
         for module in modules {
@@ -131,6 +134,7 @@ public struct SwiftFileBuilder: ~Copyable {
     }
 
     private init(codeBuilder: consuming SwiftCodeBuilder) {
+        self.indentString = codeBuilder.indentString
         self.codeBuilder = codeBuilder
     }
 }

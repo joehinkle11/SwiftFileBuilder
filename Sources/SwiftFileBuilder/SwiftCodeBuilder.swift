@@ -1,6 +1,7 @@
 struct SwiftCodeBuilder: ~Copyable {
     private var content: String = ""
     private var currentIndent: Int = 0
+    let indentString: String
     
     mutating func indent() {
         currentIndent += 1
