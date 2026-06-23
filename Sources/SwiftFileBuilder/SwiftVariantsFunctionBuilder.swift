@@ -16,6 +16,7 @@ public struct SwiftVariantsFunctionBuilder: ~Copyable {
         let originalIsConsuming = funcBuilder.isConsuming
         let originalIsMutating = funcBuilder.isMutating
         let originalIsThrowing = funcBuilder.isThrowing
+        let originalTypedThrow = funcBuilder.typedThrow
         let originalIsRethrowing = funcBuilder.isRethrowing
         let originalIsAsync = funcBuilder.isAsync
         let originalInitPrefix = funcBuilder.initPrefix
@@ -63,6 +64,7 @@ public struct SwiftVariantsFunctionBuilder: ~Copyable {
             isConsuming: originalIsConsuming,
             isMutating: originalIsMutating,
             isThrowing: originalIsThrowing,
+            typedThrow: originalTypedThrow,
             isRethrowing: originalIsRethrowing,
             isAsync: originalIsAsync,
             initPrefix: originalInitPrefix,

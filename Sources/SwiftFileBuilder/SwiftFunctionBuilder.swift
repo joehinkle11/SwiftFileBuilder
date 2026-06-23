@@ -8,6 +8,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
     var isConsuming = false
     var isMutating = false
     var isThrowing = false
+    var typedThrow: String?
     var isRethrowing = false
     var isAsync = false
     var initPrefix: String = ""
@@ -66,7 +67,9 @@ public struct SwiftFunctionBuilder: ~Copyable {
             if isAsync {
                 line += " async"
             }
-            if isThrowing {
+            if let typedThrow {
+                line += " throws(\(typedThrow))"
+            } else if isThrowing {
                 line += " throws"
             } else if isRethrowing {
                 line += " rethrows"
@@ -292,6 +295,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
         let outerIsConsuming = self.isConsuming
         let outerIsMutating = self.isMutating
         let outerIsThrowing = self.isThrowing
+        let outerTypedThrow = self.typedThrow
         let outerIsRethrowing = self.isRethrowing
         let outerIsAsync = self.isAsync
         let outerInitPrefix = self.initPrefix
@@ -311,6 +315,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
             isConsuming: outerIsConsuming,
             isMutating: outerIsMutating,
             isThrowing: outerIsThrowing,
+            typedThrow: outerTypedThrow,
             isRethrowing: outerIsRethrowing,
             isAsync: outerIsAsync,
             initPrefix: outerInitPrefix,

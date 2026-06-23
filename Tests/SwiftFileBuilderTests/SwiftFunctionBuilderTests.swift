@@ -419,6 +419,55 @@ struct SwiftFunctionBuilderTests {
         #expect(result.contains("    public func parse() throws -> AST {"))
     }
 
+    @Test func typedThrowFunction() {
+        var file = SwiftFileBuilder()
+        file.appendFunction(accessLevel: .public, typedThrow: "MyError", name: "load", returnType: "Data") { fn in
+            fn.append(line: "throw MyError.bad")
+        }
+        let result = file.finalize()
+        #expect(result.contains("public func load() throws(MyError) -> Data {"))
+    }
+
+    @Test func typedThrowAsyncFunction() {
+        var file = SwiftFileBuilder()
+        file.appendFunction(accessLevel: .public, typedThrow: "MyError", isAsync: true, name: "fetch", returnType: "String") { fn in
+            fn.append(line: "throw MyError.bad")
+        }
+        let result = file.finalize()
+        #expect(result.contains("public func fetch() async throws(MyError) -> String {"))
+    }
+
+    @Test func typedThrowNoReturnType() {
+        var file = SwiftFileBuilder()
+        file.appendFunction(accessLevel: .internal, typedThrow: "ValidationError", name: "validate") { fn in
+            fn.append(line: "throw ValidationError.invalid")
+        }
+        let result = file.finalize()
+        #expect(result.contains("internal func validate() throws(ValidationError) {"))
+    }
+
+    @Test func typedThrowMethodInType() {
+        var file = SwiftFileBuilder()
+        file.appendType(kind: .struct, name: "Parser") { type in
+            type.appendMethod(accessLevel: .public, typedThrow: "ParseError", name: "parse", returnType: "AST") { fn in
+                fn.append(line: "try doParse()")
+            }
+        }
+        let result = file.finalize()
+        #expect(result.contains("    public func parse() throws(ParseError) -> AST {"))
+    }
+
+    @Test func typedThrowInitializer() {
+        var file = SwiftFileBuilder()
+        file.appendType(kind: .struct, name: "Thing") { type in
+            type.appendInitializer(accessLevel: .public, typedThrow: "InitError") { fn in
+                fn.append(line: "throw InitError.failed")
+            }
+        }
+        let result = file.finalize()
+        #expect(result.contains("    public init() throws(InitError) {"))
+    }
+
     @Test func variadicArgument() {
         var file = SwiftFileBuilder()
         file.appendFunction(accessLevel: .public, name: "sum", arguments: [

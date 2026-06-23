@@ -191,6 +191,25 @@ struct CompileVerificationTests {
         #expect(result.exitCode == 0, "swiftc -typecheck failed:\n\(result.stderr)")
     }
 
+    @Test func typedThrowingFunctionCompiles() throws {
+        var file = SwiftFileBuilder()
+        file.appendType(accessLevel: .public, kind: .enum, name: "ParseError", inheritedTypes: ["Error"]) { type in
+            type.appendCase(name: "invalidInput")
+        }
+        file.appendNewline()
+        file.appendFunction(accessLevel: .public, typedThrow: "ParseError", name: "parse", arguments: [
+            SwiftFunctionArgument(name: "input", type: "String"),
+        ], returnType: "Int") { fn in
+            fn.appendGuard(condition: "let value = Int(input)") { fb in
+                fb.append(line: "throw ParseError.invalidInput")
+            }
+            fn.appendReturn("value")
+        }
+        let code = file.finalize()
+        let result = try typeCheckSwift(code)
+        #expect(result.exitCode == 0, "swiftc -typecheck failed:\n\(result.stderr)")
+    }
+
     @Test func subscriptCompiles() throws {
         var file = SwiftFileBuilder()
         file.appendType(accessLevel: .public, kind: .struct, name: "Storage") { type in

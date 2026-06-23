@@ -168,6 +168,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         isConsuming: Bool = false,
         isMutating: Bool = false,
         isThrowing: Bool = false,
+        typedThrow: String? = nil,
         isRethrowing: Bool = false,
         isAsync: Bool = false,
         name: String,
@@ -181,7 +182,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         let typeName = self.name
         let typeGenerics = self.generics
         let typeIsFirstCase = self.isFirstCase
-        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, accessLevel: accessLevel, isStatic: isStatic, isOverride: isOverride, isConsuming: isConsuming, isMutating: isMutating, isThrowing: isThrowing, isRethrowing: isRethrowing, isAsync: isAsync, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, accessLevel: accessLevel, isStatic: isStatic, isOverride: isOverride, isConsuming: isConsuming, isMutating: isMutating, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
         self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, generics: typeGenerics, inheritedTypes: inheritedTypes, attributes: typeAttributes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.end())
@@ -194,6 +195,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         isRequired: Bool = false,
         isFailable: Bool = false,
         isThrowing: Bool = false,
+        typedThrow: String? = nil,
         isAsync: Bool = false,
         generics: [SwiftGeneric] = [],
         arguments: [SwiftFunctionArgument] = [],
@@ -208,7 +210,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         if isRequired { modifiers.append("required") }
         if isConvenience { modifiers.append("convenience") }
         let initPrefix = modifiers.isEmpty ? "" : modifiers.joined(separator: " ") + " "
-        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, accessLevel: accessLevel, isThrowing: isThrowing, isAsync: isAsync, name: initName, generics: generics, arguments: arguments, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, accessLevel: accessLevel, isThrowing: isThrowing, typedThrow: typedThrow, isAsync: isAsync, name: initName, generics: generics, arguments: arguments, codeBuilder: codeBuilder)
         funcBuilder.initPrefix = initPrefix
         funcBuilder.start()
         builder(&funcBuilder)
