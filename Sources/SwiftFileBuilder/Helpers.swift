@@ -42,6 +42,12 @@ public enum SwiftFunctionModifier: Sendable {
     }
 }
 
+public enum SwiftImportModifier: String, Sendable {
+    case `public`
+    case `internal`
+    case package
+}
+
 public struct SwiftFunctionArgument {
     public let outerLabel: String?
     public let name: String

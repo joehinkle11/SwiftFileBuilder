@@ -11,6 +11,17 @@ public struct SwiftFileBuilder: ~Copyable {
             appendImport(module: module, spi: spi)
         }
     }
+
+    public mutating func appendImports(
+        modules: [String],
+        attributes: [String],
+        modifiers: [SwiftImportModifier] = [],
+        spi: String? = nil
+    ) {
+        for module in modules {
+            appendImport(module: module, attributes: attributes, modifiers: modifiers, spi: spi)
+        }
+    }
     
     public mutating func appendImport(module: String, spi: String? = nil) {
         if let spi {
@@ -19,6 +30,20 @@ public struct SwiftFileBuilder: ~Copyable {
             codeBuilder.append(line: "import \(module)")
         }
     }
+
+    public mutating func appendImport(
+        module: String,
+        attributes: [String],
+        modifiers: [SwiftImportModifier] = [],
+        spi: String? = nil
+    ) {
+        var components = attributes
+        if let spi { components.append("@_spi(\(spi))") }
+        components.append(contentsOf: modifiers.map(\.rawValue))
+        components.append("import")
+        components.append(module)
+        codeBuilder.append(line: components.joined(separator: " "))
+    }
     
     public mutating func appendImport<Kind: SwiftTypeBuilderKind>(module: String, type: String, kind: Kind, spi: String? = nil) {
         if let spi {
@@ -26,6 +51,23 @@ public struct SwiftFileBuilder: ~Copyable {
         } else {
             codeBuilder.append(line: "import \(kind.stringValue) \(module).\(type)")
         }
+    }
+
+    public mutating func appendImport<Kind: SwiftTypeBuilderKind>(
+        module: String,
+        type: String,
+        kind: Kind,
+        attributes: [String],
+        modifiers: [SwiftImportModifier] = [],
+        spi: String? = nil
+    ) {
+        var components = attributes
+        if let spi { components.append("@_spi(\(spi))") }
+        components.append(contentsOf: modifiers.map(\.rawValue))
+        components.append("import")
+        components.append(kind.stringValue)
+        components.append("\(module).\(type)")
+        codeBuilder.append(line: components.joined(separator: " "))
     }
     
     public mutating func appendNewline() {
