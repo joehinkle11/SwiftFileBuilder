@@ -138,6 +138,26 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         codeBuilder.append(line: line)
     }
 
+    public mutating func appendStoredProperty(
+        attributes: String? = nil,
+        accessLevel: AccessLevel? = nil,
+        modifiers: String? = nil,
+        isLet: Bool = false,
+        name: String,
+        type: String,
+        initialValue builder: (inout SwiftExpressionBuilder) -> Void
+    ) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        var prefix = ""
+        if let attributes { prefix += attributes + " " }
+        if let accessLevel { prefix += accessLevel.rawValue + " " }
+        if let modifiers { prefix += modifiers + " " }
+        prefix += isLet ? "let " : "var "
+        prefix += "\(name): \(type) = "
+        codeBuilder.append(expression: expression, prefix: prefix)
+    }
+
     public mutating func append(lines: [String]) {
         codeBuilder.append(lines: lines)
     }

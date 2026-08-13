@@ -54,4 +54,43 @@ struct SwiftExpressionBuilderTests {
         #expect(array.rendered(indentString: "    ") == ["[]"])
         #expect(dictionary.rendered(indentString: "    ") == ["[:]"])
     }
+
+    @Test func expressionSitesAndLocalVariables() {
+        var file = SwiftFileBuilder(indentString: "  ")
+        file.appendVariable(isLet: true, name: "global") { expression in
+            expression.appendArray { $0.appendElement("1") }
+        }
+        file.appendType(kind: .struct, name: "Values") { type in
+            type.appendStoredProperty(name: "stored", type: "[Int]") { expression in
+                expression.appendArray(layout: .multiline) { $0.appendElement("2") }
+            }
+            type.appendMethod(name: "make") { function in
+                function.appendVariable(attributes: "@Wrapper", modifiers: "nonisolated", isLet: true, name: "local", type: "Int") { expression in
+                    expression.appendCall("value") { _ in }
+                }
+                function.appendExpression { expression in
+                    expression.appendCall("consume") { $0.appendArgument(expression: "local") }
+                }
+                function.appendReturn { expression in
+                    expression.appendCall("finish", layout: .multiline) { $0.appendArgument(expression: "local") }
+                }
+            }
+        }
+        #expect(file.finalize() == """
+        let global = [1]
+        struct Values {
+          var stored: [Int] = [
+            2,
+          ]
+          func make() {
+            @Wrapper nonisolated let local: Int = value()
+            consume(local)
+            return finish(
+              local,
+            )
+          }
+        }
+
+        """)
+    }
 }

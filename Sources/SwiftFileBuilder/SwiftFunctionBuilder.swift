@@ -193,6 +193,55 @@ public struct SwiftFunctionBuilder: ~Copyable {
         codeBuilder.append(line: expression.map { "return \($0)" } ?? "return")
     }
 
+    public mutating func appendReturn(builder: (inout SwiftExpressionBuilder) -> Void) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        codeBuilder.append(expression: expression, prefix: "return ")
+    }
+
+    public mutating func appendExpression(builder: (inout SwiftExpressionBuilder) -> Void) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        codeBuilder.append(expression: expression)
+    }
+
+    public mutating func appendVariable(
+        attributes: String? = nil,
+        modifiers: String? = nil,
+        isLet: Bool = false,
+        name: String,
+        type: String? = nil,
+        initialValue: String? = nil
+    ) {
+        var line = ""
+        if let attributes { line += attributes + " " }
+        if let modifiers { line += modifiers + " " }
+        line += isLet ? "let " : "var "
+        line += name
+        if let type { line += ": \(type)" }
+        if let initialValue { line += " = \(initialValue)" }
+        codeBuilder.append(line: line)
+    }
+
+    public mutating func appendVariable(
+        attributes: String? = nil,
+        modifiers: String? = nil,
+        isLet: Bool = false,
+        name: String,
+        type: String? = nil,
+        initialValue builder: (inout SwiftExpressionBuilder) -> Void
+    ) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        var prefix = ""
+        if let attributes { prefix += attributes + " " }
+        if let modifiers { prefix += modifiers + " " }
+        prefix += isLet ? "let " : "var "
+        prefix += name
+        if let type { prefix += ": \(type)" }
+        codeBuilder.append(expression: expression, prefix: prefix + " = ")
+    }
+
     public mutating func appendContinue(_ label: String? = nil) {
         codeBuilder.append(line: label.map { "continue \($0)" } ?? "continue")
     }
