@@ -119,6 +119,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
 
     public mutating func appendStoredProperty(
         attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
         accessLevel: AccessLevel? = nil,
         modifiers: String? = nil,
         isLet: Bool = false,
@@ -127,7 +128,8 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         initialValue: String? = nil
     ) {
         var line = ""
-        if let attributes { line += attributes + " " }
+        if attributeLayout == .separateLines, let attributes { codeBuilder.append(content: attributes) }
+        if attributeLayout == .inline, let attributes { line += attributes + " " }
         if let accessLevel { line += accessLevel.rawValue + " " }
         if let modifiers { line += modifiers + " " }
         line += isLet ? "let " : "var "
@@ -140,6 +142,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
 
     public mutating func appendStoredProperty(
         attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
         accessLevel: AccessLevel? = nil,
         modifiers: String? = nil,
         isLet: Bool = false,
@@ -150,7 +153,8 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         var expression = SwiftExpressionBuilder()
         builder(&expression)
         var prefix = ""
-        if let attributes { prefix += attributes + " " }
+        if attributeLayout == .separateLines, let attributes { codeBuilder.append(content: attributes) }
+        if attributeLayout == .inline, let attributes { prefix += attributes + " " }
         if let accessLevel { prefix += accessLevel.rawValue + " " }
         if let modifiers { prefix += modifiers + " " }
         prefix += isLet ? "let " : "var "
@@ -181,6 +185,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
 
     public mutating func appendMethod(
         attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
         accessLevel: AccessLevel? = nil,
         asGetter: Bool = false,
         isStatic: Bool = false,
@@ -203,7 +208,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         let typeName = self.name
         let typeGenerics = self.generics
         let typeIsFirstCase = self.isFirstCase
-        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, accessLevel: accessLevel, isStatic: isStatic, isOverride: isOverride, isConsuming: isConsuming, isMutating: isMutating, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, attributeLayout: attributeLayout, accessLevel: accessLevel, isStatic: isStatic, isOverride: isOverride, isConsuming: isConsuming, isMutating: isMutating, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
         self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, generics: typeGenerics, inheritedTypes: inheritedTypes, attributes: typeAttributes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.end())
@@ -211,6 +216,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
 
     public mutating func appendInitializer(
         attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
         accessLevel: AccessLevel? = nil,
         isConvenience: Bool = false,
         isRequired: Bool = false,
@@ -231,7 +237,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         if isRequired { modifiers.append("required") }
         if isConvenience { modifiers.append("convenience") }
         let initPrefix = modifiers.isEmpty ? "" : modifiers.joined(separator: " ") + " "
-        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, accessLevel: accessLevel, isThrowing: isThrowing, typedThrow: typedThrow, isAsync: isAsync, name: initName, generics: generics, arguments: arguments, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, attributeLayout: attributeLayout, accessLevel: accessLevel, isThrowing: isThrowing, typedThrow: typedThrow, isAsync: isAsync, name: initName, generics: generics, arguments: arguments, codeBuilder: codeBuilder)
         funcBuilder.initPrefix = initPrefix
         funcBuilder.start()
         builder(&funcBuilder)

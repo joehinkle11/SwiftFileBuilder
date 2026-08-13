@@ -48,6 +48,11 @@ public enum SwiftImportModifier: String, Sendable {
     case package
 }
 
+public enum SwiftAttributeLayout: Sendable {
+    case inline
+    case separateLines
+}
+
 public struct SwiftFunctionArgument {
     public let outerLabel: String?
     public let name: String

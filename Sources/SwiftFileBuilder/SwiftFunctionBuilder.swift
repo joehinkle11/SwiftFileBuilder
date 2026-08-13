@@ -2,6 +2,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
 
     var asGetter = false
     var attributes: String?
+    var attributeLayout: SwiftAttributeLayout = .inline
     var accessLevel: AccessLevel?
     var isStatic = false
     var isOverride = false
@@ -38,7 +39,10 @@ public struct SwiftFunctionBuilder: ~Copyable {
             }
             genericsStr += ">"
         }
-        let attributesStr = attributes.map { "\($0) " } ?? ""
+        if attributeLayout == .separateLines, let attributes {
+            codeBuilder.append(content: attributes)
+        }
+        let attributesStr = attributeLayout == .inline ? attributes.map { "\($0) " } ?? "" : ""
         let accessLevelStr = accessLevel.map { "\($0.rawValue) " } ?? ""
         let nameStr: String
         if name == "init" || name == "init?" {
@@ -403,6 +407,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
     
     public mutating func appendFunction(
         attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
         modifiers: [SwiftFunctionModifier] = [],
         isThrowing: Bool = false,
         typedThrow: String? = nil,
@@ -415,6 +420,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
         builder: (inout SwiftFunctionBuilder) -> Void
     ) {
         let outerAttributes = self.attributes
+        let outerAttributeLayout = self.attributeLayout
         let outerAsGetter = self.asGetter
         let outerAccessLevel = self.accessLevel
         let outerIsStatic = self.isStatic
@@ -431,12 +437,13 @@ public struct SwiftFunctionBuilder: ~Copyable {
         let outerGenerics = self.generics
         let outerArguments = self.arguments
         let outerReturnType = self.returnType
-        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, attributeLayout: attributeLayout, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
         self = SwiftFunctionBuilder(
             asGetter: outerAsGetter,
             attributes: outerAttributes,
+            attributeLayout: outerAttributeLayout,
             accessLevel: outerAccessLevel,
             isStatic: outerIsStatic,
             isOverride: outerIsOverride,
