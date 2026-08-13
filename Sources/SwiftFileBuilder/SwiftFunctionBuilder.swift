@@ -143,6 +143,16 @@ public struct SwiftFunctionBuilder: ~Copyable {
         codeBuilder.append(line: "}")
     }
 
+    public mutating func appendWhile(
+        condition: (inout SwiftConditionBuilder) -> Void,
+        label: String? = nil,
+        builder: (inout SwiftFunctionBuilder) -> Void
+    ) {
+        var conditionBuilder = SwiftConditionBuilder()
+        condition(&conditionBuilder)
+        appendMultilineBlock(keyword: label.map { "\($0): while " } ?? "while ", condition: conditionBuilder, suffix: " {", builder: builder)
+    }
+
     public mutating func appendBlock(header: String, builder: (inout SwiftFunctionBuilder) -> Void) {
         let headerLine = header.hasSuffix("{") ? header : header + " {"
         codeBuilder.append(line: headerLine)
@@ -158,6 +168,15 @@ public struct SwiftFunctionBuilder: ~Copyable {
 
     public mutating func appendGuard(condition: String, builder: (inout SwiftFunctionBuilder) -> Void) {
         appendBlock(header: "guard \(condition) else {", builder: builder)
+    }
+
+    public mutating func appendGuard(
+        condition: (inout SwiftConditionBuilder) -> Void,
+        builder: (inout SwiftFunctionBuilder) -> Void
+    ) {
+        var conditionBuilder = SwiftConditionBuilder()
+        condition(&conditionBuilder)
+        appendMultilineBlock(keyword: "guard ", condition: conditionBuilder, suffix: " else {", builder: builder)
     }
 
     public mutating func appendIf(
@@ -185,6 +204,56 @@ public struct SwiftFunctionBuilder: ~Copyable {
             codeBuilder.outdent()
         }
 
+        codeBuilder.append(line: "}")
+    }
+
+    public mutating func appendIf(
+        condition: (inout SwiftConditionBuilder) -> Void,
+        builder: (inout SwiftFunctionBuilder) -> Void,
+        elseBuilder: ((inout SwiftFunctionBuilder) -> Void)? = nil
+    ) {
+        var conditionBuilder = SwiftConditionBuilder()
+        condition(&conditionBuilder)
+        appendMultilineHeader(keyword: "if ", condition: conditionBuilder, suffix: " {")
+        codeBuilder.indent()
+        builder(&self)
+        codeBuilder.outdent()
+        if let elseBuilder {
+            codeBuilder.append(line: "} else {")
+            codeBuilder.indent()
+            elseBuilder(&self)
+            codeBuilder.outdent()
+        }
+        codeBuilder.append(line: "}")
+    }
+
+    private mutating func appendMultilineHeader(keyword: String, condition: SwiftConditionBuilder, suffix: String) {
+        guard let first = condition.lines.first else {
+            codeBuilder.append(line: keyword + suffix)
+            return
+        }
+        if condition.lines.count == 1 {
+            codeBuilder.append(line: keyword + first + suffix)
+            return
+        }
+        codeBuilder.append(line: keyword + first)
+        codeBuilder.indent()
+        for (index, line) in condition.lines.dropFirst().enumerated() {
+            codeBuilder.append(line: line + (index == condition.lines.count - 2 ? suffix : ""))
+        }
+        codeBuilder.outdent()
+    }
+
+    private mutating func appendMultilineBlock(
+        keyword: String,
+        condition: SwiftConditionBuilder,
+        suffix: String,
+        builder: (inout SwiftFunctionBuilder) -> Void
+    ) {
+        appendMultilineHeader(keyword: keyword, condition: condition, suffix: suffix)
+        codeBuilder.indent()
+        builder(&self)
+        codeBuilder.outdent()
         codeBuilder.append(line: "}")
     }
 
