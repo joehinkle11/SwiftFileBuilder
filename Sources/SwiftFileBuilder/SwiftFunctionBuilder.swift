@@ -2,6 +2,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
 
     var asGetter = false
     var attributes: String?
+    var attributeLayout: SwiftAttributeLayout = .inline
     var accessLevel: AccessLevel?
     var isStatic = false
     var isOverride = false
@@ -11,6 +12,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
     var typedThrow: String?
     var isRethrowing = false
     var isAsync = false
+    var modifiers: [SwiftFunctionModifier] = []
     var initPrefix: String = ""
     var name: String
     var generics: [SwiftGeneric]
@@ -37,7 +39,10 @@ public struct SwiftFunctionBuilder: ~Copyable {
             }
             genericsStr += ">"
         }
-        let attributesStr = attributes.map { "\($0) " } ?? ""
+        if attributeLayout == .separateLines, let attributes {
+            codeBuilder.append(content: attributes)
+        }
+        let attributesStr = attributeLayout == .inline ? attributes.map { "\($0) " } ?? "" : ""
         let accessLevelStr = accessLevel.map { "\($0.rawValue) " } ?? ""
         let nameStr: String
         if name == "init" || name == "init?" {
@@ -49,9 +54,11 @@ public struct SwiftFunctionBuilder: ~Copyable {
         }
         let staticStr = isStatic ? "static " : ""
         let overrideStr = isOverride ? "override " : ""
-        let consumingStr = isConsuming ? "consuming " : ""
+        var renderedModifiers = modifiers.sorted { $0.sortOrder < $1.sortOrder }.map(\.rendered)
+        if isConsuming && !renderedModifiers.contains("consuming") { renderedModifiers.append("consuming") }
+        let modifiersStr = renderedModifiers.isEmpty ? "" : renderedModifiers.joined(separator: " ") + " "
         let mutatingStr = isMutating ? "mutating " : ""
-        var line = "\(attributesStr)\(accessLevelStr)\(overrideStr)\(staticStr)\(consumingStr)\(mutatingStr)\(nameStr)\(genericsStr)"
+        var line = "\(attributesStr)\(accessLevelStr)\(modifiersStr)\(overrideStr)\(staticStr)\(mutatingStr)\(nameStr)\(genericsStr)"
         if asGetter {
             guard let returnType else {
                 Swift.assertionFailure("SwiftFunctionBuilder: getter requires an explicit return type. This is a codegen-template bug; check the caller of `appendMethod(asGetter: true, returnType: nil)`.")
@@ -140,6 +147,16 @@ public struct SwiftFunctionBuilder: ~Copyable {
         codeBuilder.append(line: "}")
     }
 
+    public mutating func appendWhile(
+        condition: (inout SwiftConditionBuilder) -> Void,
+        label: String? = nil,
+        builder: (inout SwiftFunctionBuilder) -> Void
+    ) {
+        var conditionBuilder = SwiftConditionBuilder()
+        condition(&conditionBuilder)
+        appendMultilineBlock(keyword: label.map { "\($0): while " } ?? "while ", condition: conditionBuilder, suffix: " {", builder: builder)
+    }
+
     public mutating func appendBlock(header: String, builder: (inout SwiftFunctionBuilder) -> Void) {
         let headerLine = header.hasSuffix("{") ? header : header + " {"
         codeBuilder.append(line: headerLine)
@@ -155,6 +172,15 @@ public struct SwiftFunctionBuilder: ~Copyable {
 
     public mutating func appendGuard(condition: String, builder: (inout SwiftFunctionBuilder) -> Void) {
         appendBlock(header: "guard \(condition) else {", builder: builder)
+    }
+
+    public mutating func appendGuard(
+        condition: (inout SwiftConditionBuilder) -> Void,
+        builder: (inout SwiftFunctionBuilder) -> Void
+    ) {
+        var conditionBuilder = SwiftConditionBuilder()
+        condition(&conditionBuilder)
+        appendMultilineBlock(keyword: "guard ", condition: conditionBuilder, suffix: " else {", builder: builder)
     }
 
     public mutating func appendIf(
@@ -185,12 +211,111 @@ public struct SwiftFunctionBuilder: ~Copyable {
         codeBuilder.append(line: "}")
     }
 
+    public mutating func appendIf(
+        condition: (inout SwiftConditionBuilder) -> Void,
+        builder: (inout SwiftFunctionBuilder) -> Void,
+        elseBuilder: ((inout SwiftFunctionBuilder) -> Void)? = nil
+    ) {
+        var conditionBuilder = SwiftConditionBuilder()
+        condition(&conditionBuilder)
+        appendMultilineHeader(keyword: "if ", condition: conditionBuilder, suffix: " {")
+        codeBuilder.indent()
+        builder(&self)
+        codeBuilder.outdent()
+        if let elseBuilder {
+            codeBuilder.append(line: "} else {")
+            codeBuilder.indent()
+            elseBuilder(&self)
+            codeBuilder.outdent()
+        }
+        codeBuilder.append(line: "}")
+    }
+
+    private mutating func appendMultilineHeader(keyword: String, condition: SwiftConditionBuilder, suffix: String) {
+        guard let first = condition.lines.first else {
+            codeBuilder.append(line: keyword + suffix)
+            return
+        }
+        if condition.lines.count == 1 {
+            codeBuilder.append(line: keyword + first + suffix)
+            return
+        }
+        codeBuilder.append(line: keyword + first)
+        codeBuilder.indent()
+        for (index, line) in condition.lines.dropFirst().enumerated() {
+            codeBuilder.append(line: line + (index == condition.lines.count - 2 ? suffix : ""))
+        }
+        codeBuilder.outdent()
+    }
+
+    private mutating func appendMultilineBlock(
+        keyword: String,
+        condition: SwiftConditionBuilder,
+        suffix: String,
+        builder: (inout SwiftFunctionBuilder) -> Void
+    ) {
+        appendMultilineHeader(keyword: keyword, condition: condition, suffix: suffix)
+        codeBuilder.indent()
+        builder(&self)
+        codeBuilder.outdent()
+        codeBuilder.append(line: "}")
+    }
+
     public mutating func appendIfLet(binding: String, optional: String, builder: (inout SwiftFunctionBuilder) -> Void) {
         appendIf("let \(binding) = \(optional)", builder: builder)
     }
 
     public mutating func appendReturn(_ expression: String? = nil) {
         codeBuilder.append(line: expression.map { "return \($0)" } ?? "return")
+    }
+
+    public mutating func appendReturn(builder: (inout SwiftExpressionBuilder) -> Void) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        codeBuilder.append(expression: expression, prefix: "return ")
+    }
+
+    public mutating func appendExpression(builder: (inout SwiftExpressionBuilder) -> Void) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        codeBuilder.append(expression: expression)
+    }
+
+    public mutating func appendVariable(
+        attributes: String? = nil,
+        modifiers: String? = nil,
+        isLet: Bool = false,
+        name: String,
+        type: String? = nil,
+        initialValue: String? = nil
+    ) {
+        var line = ""
+        if let attributes { line += attributes + " " }
+        if let modifiers { line += modifiers + " " }
+        line += isLet ? "let " : "var "
+        line += name
+        if let type { line += ": \(type)" }
+        if let initialValue { line += " = \(initialValue)" }
+        codeBuilder.append(line: line)
+    }
+
+    public mutating func appendVariable(
+        attributes: String? = nil,
+        modifiers: String? = nil,
+        isLet: Bool = false,
+        name: String,
+        type: String? = nil,
+        initialValue builder: (inout SwiftExpressionBuilder) -> Void
+    ) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        var prefix = ""
+        if let attributes { prefix += attributes + " " }
+        if let modifiers { prefix += modifiers + " " }
+        prefix += isLet ? "let " : "var "
+        prefix += name
+        if let type { prefix += ": \(type)" }
+        codeBuilder.append(expression: expression, prefix: prefix + " = ")
     }
 
     public mutating func appendContinue(_ label: String? = nil) {
@@ -282,12 +407,20 @@ public struct SwiftFunctionBuilder: ~Copyable {
     
     public mutating func appendFunction(
         attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
+        modifiers: [SwiftFunctionModifier] = [],
+        isThrowing: Bool = false,
+        typedThrow: String? = nil,
+        isRethrowing: Bool = false,
+        isAsync: Bool = false,
         name: String,
         generics: [SwiftGeneric] = [],
         arguments: [SwiftFunctionArgument] = [],
+        returnType: String? = nil,
         builder: (inout SwiftFunctionBuilder) -> Void
     ) {
         let outerAttributes = self.attributes
+        let outerAttributeLayout = self.attributeLayout
         let outerAsGetter = self.asGetter
         let outerAccessLevel = self.accessLevel
         let outerIsStatic = self.isStatic
@@ -298,17 +431,19 @@ public struct SwiftFunctionBuilder: ~Copyable {
         let outerTypedThrow = self.typedThrow
         let outerIsRethrowing = self.isRethrowing
         let outerIsAsync = self.isAsync
+        let outerModifiers = self.modifiers
         let outerInitPrefix = self.initPrefix
         let outerName = self.name
         let outerGenerics = self.generics
         let outerArguments = self.arguments
         let outerReturnType = self.returnType
-        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, name: name, generics: generics, arguments: arguments, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, attributeLayout: attributeLayout, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
         self = SwiftFunctionBuilder(
             asGetter: outerAsGetter,
             attributes: outerAttributes,
+            attributeLayout: outerAttributeLayout,
             accessLevel: outerAccessLevel,
             isStatic: outerIsStatic,
             isOverride: outerIsOverride,
@@ -318,6 +453,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
             typedThrow: outerTypedThrow,
             isRethrowing: outerIsRethrowing,
             isAsync: outerIsAsync,
+            modifiers: outerModifiers,
             initPrefix: outerInitPrefix,
             name: outerName,
             generics: outerGenerics,

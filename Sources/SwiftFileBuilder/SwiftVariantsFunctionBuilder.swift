@@ -9,6 +9,7 @@ public struct SwiftVariantsFunctionBuilder: ~Copyable {
         removingGenerics: [String] = [],
     ) {
         let originalAttributes = funcBuilder.attributes
+        let originalAttributeLayout = funcBuilder.attributeLayout
         let originalAsGetter = funcBuilder.asGetter
         let originalAccessLevel = funcBuilder.accessLevel
         let originalIsStatic = funcBuilder.isStatic
@@ -19,6 +20,7 @@ public struct SwiftVariantsFunctionBuilder: ~Copyable {
         let originalTypedThrow = funcBuilder.typedThrow
         let originalIsRethrowing = funcBuilder.isRethrowing
         let originalIsAsync = funcBuilder.isAsync
+        let originalModifiers = funcBuilder.modifiers
         let originalInitPrefix = funcBuilder.initPrefix
         let originalName = funcBuilder.name
         let originalGenerics = funcBuilder.generics
@@ -58,6 +60,7 @@ public struct SwiftVariantsFunctionBuilder: ~Copyable {
         self = SwiftVariantsFunctionBuilder(funcBuilder: SwiftFunctionBuilder(
             asGetter: originalAsGetter,
             attributes: originalAttributes,
+            attributeLayout: originalAttributeLayout,
             accessLevel: originalAccessLevel,
             isStatic: originalIsStatic,
             isOverride: originalIsOverride,
@@ -67,6 +70,7 @@ public struct SwiftVariantsFunctionBuilder: ~Copyable {
             typedThrow: originalTypedThrow,
             isRethrowing: originalIsRethrowing,
             isAsync: originalIsAsync,
+            modifiers: originalModifiers,
             initPrefix: originalInitPrefix,
             name: originalName,
             generics: originalGenerics,

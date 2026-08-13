@@ -38,6 +38,13 @@ struct SwiftCodeBuilder: ~Copyable {
         self.append(lines: lines, prefixingEachLineWith: prefix)
     }
 
+    mutating func append(expression: SwiftExpressionBuilder, prefix: String = "") {
+        var lines = expression.rendered(indentString: indentString)
+        guard !lines.isEmpty else { return }
+        append(line: prefix + lines.removeFirst())
+        append(lines: lines)
+    }
+
     mutating func appendTypeAlias(
         accessLevel: AccessLevel? = nil,
         name: String,

@@ -11,6 +11,17 @@ public struct SwiftFileBuilder: ~Copyable {
             appendImport(module: module, spi: spi)
         }
     }
+
+    public mutating func appendImports(
+        modules: [String],
+        attributes: [String],
+        modifiers: [SwiftImportModifier] = [],
+        spi: String? = nil
+    ) {
+        for module in modules {
+            appendImport(module: module, attributes: attributes, modifiers: modifiers, spi: spi)
+        }
+    }
     
     public mutating func appendImport(module: String, spi: String? = nil) {
         if let spi {
@@ -19,6 +30,20 @@ public struct SwiftFileBuilder: ~Copyable {
             codeBuilder.append(line: "import \(module)")
         }
     }
+
+    public mutating func appendImport(
+        module: String,
+        attributes: [String],
+        modifiers: [SwiftImportModifier] = [],
+        spi: String? = nil
+    ) {
+        var components = attributes
+        if let spi { components.append("@_spi(\(spi))") }
+        components.append(contentsOf: modifiers.map(\.rawValue))
+        components.append("import")
+        components.append(module)
+        codeBuilder.append(line: components.joined(separator: " "))
+    }
     
     public mutating func appendImport<Kind: SwiftTypeBuilderKind>(module: String, type: String, kind: Kind, spi: String? = nil) {
         if let spi {
@@ -26,6 +51,23 @@ public struct SwiftFileBuilder: ~Copyable {
         } else {
             codeBuilder.append(line: "import \(kind.stringValue) \(module).\(type)")
         }
+    }
+
+    public mutating func appendImport<Kind: SwiftTypeBuilderKind>(
+        module: String,
+        type: String,
+        kind: Kind,
+        attributes: [String],
+        modifiers: [SwiftImportModifier] = [],
+        spi: String? = nil
+    ) {
+        var components = attributes
+        if let spi { components.append("@_spi(\(spi))") }
+        components.append(contentsOf: modifiers.map(\.rawValue))
+        components.append("import")
+        components.append(kind.stringValue)
+        components.append("\(module).\(type)")
+        codeBuilder.append(line: components.joined(separator: " "))
     }
     
     public mutating func appendNewline() {
@@ -71,12 +113,14 @@ public struct SwiftFileBuilder: ~Copyable {
 
     public mutating func appendFunction(
         attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
         accessLevel: AccessLevel? = nil,
         asGetter: Bool = false,
         isThrowing: Bool = false,
         typedThrow: String? = nil,
         isRethrowing: Bool = false,
         isAsync: Bool = false,
+        modifiers: [SwiftFunctionModifier] = [],
         name: String,
         generics: [SwiftGeneric] = [],
         arguments: [SwiftFunctionArgument] = [],
@@ -84,7 +128,7 @@ public struct SwiftFileBuilder: ~Copyable {
         builder: (inout SwiftFunctionBuilder) -> Void,
         variantsBuilder: (inout SwiftVariantsFunctionBuilder) -> Void = { _ in }
     ) {
-        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, accessLevel: accessLevel, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, attributeLayout: attributeLayout, accessLevel: accessLevel, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         var variants = SwiftVariantsFunctionBuilder(funcBuilder: funcBuilder)
         variantsBuilder(&variants)
         funcBuilder = variants.funcBuilder
@@ -95,6 +139,23 @@ public struct SwiftFileBuilder: ~Copyable {
     
     public mutating func appendType<Kind: SwiftTypeBuilderKind>(attributes: String? = nil, accessLevel: AccessLevel? = nil, kind: Kind, name: String, generics: [SwiftGeneric] = [], inheritedTypes: [String] = [], builder: (inout SwiftTypeBuilder<Kind>) -> Void) {
         var typeBuilder = SwiftTypeBuilder(kind: kind, accessLevel: accessLevel, name: name, generics: generics, inheritedTypes: inheritedTypes, attributes: attributes, codeBuilder: codeBuilder)
+        typeBuilder.start()
+        builder(&typeBuilder)
+        self = SwiftFileBuilder(codeBuilder: typeBuilder.end())
+    }
+
+    public mutating func appendType<Kind: SwiftTypeBuilderKind>(
+        attributes: String,
+        attributeLayout: SwiftAttributeLayout,
+        accessLevel: AccessLevel? = nil,
+        kind: Kind,
+        name: String,
+        generics: [SwiftGeneric] = [],
+        inheritedTypes: [String] = [],
+        builder: (inout SwiftTypeBuilder<Kind>) -> Void
+    ) {
+        if attributeLayout == .separateLines { codeBuilder.append(content: attributes) }
+        var typeBuilder = SwiftTypeBuilder(kind: kind, accessLevel: accessLevel, name: name, generics: generics, inheritedTypes: inheritedTypes, attributes: attributeLayout == .inline ? attributes : nil, codeBuilder: codeBuilder)
         typeBuilder.start()
         builder(&typeBuilder)
         self = SwiftFileBuilder(codeBuilder: typeBuilder.end())
@@ -110,6 +171,7 @@ public struct SwiftFileBuilder: ~Copyable {
 
     public mutating func appendVariable(
         attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
         accessLevel: AccessLevel? = nil,
         modifiers: String? = nil,
         isLet: Bool = false,
@@ -118,7 +180,8 @@ public struct SwiftFileBuilder: ~Copyable {
         initialValue: String? = nil
     ) {
         var line = ""
-        if let attributes { line += attributes + " " }
+        if attributeLayout == .separateLines, let attributes { codeBuilder.append(content: attributes) }
+        if attributeLayout == .inline, let attributes { line += attributes + " " }
         if let accessLevel { line += accessLevel.rawValue + " " }
         if let modifiers { line += modifiers + " " }
         line += isLet ? "let " : "var "
@@ -126,6 +189,29 @@ public struct SwiftFileBuilder: ~Copyable {
         if let type { line += ": \(type)" }
         if let initialValue { line += " = \(initialValue)" }
         codeBuilder.append(line: line)
+    }
+
+    public mutating func appendVariable(
+        attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
+        accessLevel: AccessLevel? = nil,
+        modifiers: String? = nil,
+        isLet: Bool = false,
+        name: String,
+        type: String? = nil,
+        initialValue builder: (inout SwiftExpressionBuilder) -> Void
+    ) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        var prefix = ""
+        if attributeLayout == .separateLines, let attributes { codeBuilder.append(content: attributes) }
+        if attributeLayout == .inline, let attributes { prefix += attributes + " " }
+        if let accessLevel { prefix += accessLevel.rawValue + " " }
+        if let modifiers { prefix += modifiers + " " }
+        prefix += isLet ? "let " : "var "
+        prefix += name
+        if let type { prefix += ": \(type)" }
+        codeBuilder.append(expression: expression, prefix: prefix + " = ")
     }
 
     public consuming func finalize() -> String {
