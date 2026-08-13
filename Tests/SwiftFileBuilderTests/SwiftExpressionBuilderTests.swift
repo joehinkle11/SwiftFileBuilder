@@ -93,4 +93,41 @@ struct SwiftExpressionBuilderTests {
 
         """)
     }
+
+    @Test func closureArgumentWithTypedThrowsAndBodyBuilders() {
+        var file = SwiftFileBuilder(indentString: "  ")
+        file.appendFunction(name: "register") { function in
+            function.appendExpression { expression in
+                expression.appendCall("run", layout: .multiline) { call in
+                    call.appendClosureArgument(
+                        label: "handler",
+                        parameters: ["value", "_"],
+                        isAsync: true,
+                        typedThrow: "ProcessingError",
+                        returnType: "Result"
+                    ) { closure in
+                        closure.appendVariable(isLet: true, name: "result", initialValue: "process(value)")
+                        closure.appendIf("result.isEmpty") { body in
+                            body.appendReturn(".empty")
+                        }
+                        closure.appendReturn { $0.append("result") }
+                    }
+                }
+            }
+        }
+        #expect(file.finalize() == """
+        func register() {
+          run(
+            handler: { value, _ async throws(ProcessingError) -> Result in
+              let result = process(value)
+              if result.isEmpty {
+                return .empty
+              }
+              return result
+            },
+          )
+        }
+
+        """)
+    }
 }

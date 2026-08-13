@@ -40,6 +40,26 @@ public struct SwiftExpressionBuilder {
         builder(&dictionary)
         expression = .dictionary(layout: layout, entries: dictionary.entries)
     }
+
+    public mutating func appendClosure(
+        parameters: [String] = [],
+        isAsync: Bool = false,
+        isThrowing: Bool = false,
+        typedThrow: String? = nil,
+        returnType: String? = nil,
+        builder: (inout SwiftClosureExpressionBuilder) -> Void
+    ) {
+        var closure = SwiftClosureExpressionBuilder()
+        builder(&closure)
+        expression = .closure(
+            parameters: parameters,
+            isAsync: isAsync,
+            isThrowing: isThrowing,
+            typedThrow: typedThrow,
+            returnType: returnType,
+            body: closure.finish()
+        )
+    }
 }
 
 public struct SwiftCallExpressionBuilder {
@@ -58,6 +78,128 @@ public struct SwiftCallExpressionBuilder {
         arguments.append(SwiftCallArgument(label: label, expression: expression.expression))
     }
 
+    public mutating func appendClosureArgument(
+        label: String? = nil,
+        parameters: [String] = [],
+        isAsync: Bool = false,
+        isThrowing: Bool = false,
+        typedThrow: String? = nil,
+        returnType: String? = nil,
+        builder: (inout SwiftClosureExpressionBuilder) -> Void
+    ) {
+        var expression = SwiftExpressionBuilder()
+        expression.appendClosure(
+            parameters: parameters,
+            isAsync: isAsync,
+            isThrowing: isThrowing,
+            typedThrow: typedThrow,
+            returnType: returnType,
+            builder: builder
+        )
+        arguments.append(SwiftCallArgument(label: label, expression: expression.expression))
+    }
+
+}
+
+public struct SwiftClosureExpressionBuilder: ~Copyable {
+    // Tabs are an internal, layout-independent indentation marker. They are
+    // replaced with the destination builder's indentation string at render time.
+    private var codeBuilder = SwiftCodeBuilder(indentString: "\t")
+
+    public mutating func append(line: String) { codeBuilder.append(line: line) }
+    public mutating func append(lines: [String]) { codeBuilder.append(lines: lines) }
+    public mutating func append(content: String) { codeBuilder.append(content: content) }
+    public mutating func appendNewline() { codeBuilder.appendNewline() }
+
+    public mutating func appendReturn(_ expression: String? = nil) {
+        codeBuilder.append(line: expression.map { "return \($0)" } ?? "return")
+    }
+
+    public mutating func appendReturn(builder: (inout SwiftExpressionBuilder) -> Void) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        codeBuilder.append(expression: expression, prefix: "return ")
+    }
+
+    public mutating func appendExpression(builder: (inout SwiftExpressionBuilder) -> Void) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        codeBuilder.append(expression: expression)
+    }
+
+    public mutating func appendVariable(
+        attributes: String? = nil,
+        modifiers: String? = nil,
+        isLet: Bool = false,
+        name: String,
+        type: String? = nil,
+        initialValue: String? = nil
+    ) {
+        var line = ""
+        if let attributes { line += attributes + " " }
+        if let modifiers { line += modifiers + " " }
+        line += isLet ? "let " : "var "
+        line += name
+        if let type { line += ": \(type)" }
+        if let initialValue { line += " = \(initialValue)" }
+        codeBuilder.append(line: line)
+    }
+
+    public mutating func appendVariable(
+        attributes: String? = nil,
+        modifiers: String? = nil,
+        isLet: Bool = false,
+        name: String,
+        type: String? = nil,
+        initialValue builder: (inout SwiftExpressionBuilder) -> Void
+    ) {
+        var expression = SwiftExpressionBuilder()
+        builder(&expression)
+        var prefix = attributes.map { $0 + " " } ?? ""
+        prefix += modifiers.map { $0 + " " } ?? ""
+        prefix += isLet ? "let " : "var "
+        prefix += name
+        if let type { prefix += ": \(type)" }
+        codeBuilder.append(expression: expression, prefix: prefix + " = ")
+    }
+
+    public mutating func appendGuard(condition: String, builder: (inout SwiftClosureExpressionBuilder) -> Void) {
+        appendBlock(header: "guard \(condition) else", builder: builder)
+    }
+
+    public mutating func appendWhile(_ test: String, builder: (inout SwiftClosureExpressionBuilder) -> Void) {
+        appendBlock(header: "while \(test)", builder: builder)
+    }
+
+    public mutating func appendIf(
+        _ condition: String,
+        builder: (inout SwiftClosureExpressionBuilder) -> Void,
+        elseBuilder: ((inout SwiftClosureExpressionBuilder) -> Void)? = nil
+    ) {
+        codeBuilder.append(line: "if \(condition) {")
+        codeBuilder.indent()
+        builder(&self)
+        codeBuilder.outdent()
+        if let elseBuilder {
+            codeBuilder.append(line: "} else {")
+            codeBuilder.indent()
+            elseBuilder(&self)
+            codeBuilder.outdent()
+        }
+        codeBuilder.append(line: "}")
+    }
+
+    public mutating func appendBlock(header: String, builder: (inout SwiftClosureExpressionBuilder) -> Void) {
+        codeBuilder.append(line: header.hasSuffix("{") ? header : header + " {")
+        codeBuilder.indent()
+        builder(&self)
+        codeBuilder.outdent()
+        codeBuilder.append(line: "}")
+    }
+
+    fileprivate consuming func finish() -> [String] {
+        codeBuilder.finalize().split(separator: "\n", omittingEmptySubsequences: false).dropLast().map(String.init)
+    }
 }
 
 public struct SwiftArrayExpressionBuilder {
@@ -112,6 +254,7 @@ private indirect enum SwiftExpression {
     case call(name: String, prefix: String?, layout: SwiftExpressionLayout, arguments: [SwiftCallArgument])
     case array(layout: SwiftExpressionLayout, elements: [SwiftExpression])
     case dictionary(layout: SwiftExpressionLayout, entries: [(SwiftExpression, SwiftExpression)])
+    case closure(parameters: [String], isAsync: Bool, isThrowing: Bool, typedThrow: String?, returnType: String?, body: [String])
 
     func rendered(indent: Int = 0, indentString: String) -> [String] {
         switch self {
@@ -166,6 +309,20 @@ private indirect enum SwiftExpression {
                 lines[lines.count - 1] += ","
             }
             lines.append(String(repeating: indentString, count: indent) + "]")
+            return lines
+        case .closure(let parameters, let isAsync, let isThrowing, let typedThrow, let returnType, let body):
+            var signature = parameters.joined(separator: ", ")
+            if parameters.isEmpty && (isAsync || isThrowing || typedThrow != nil || returnType != nil) { signature = "()" }
+            if isAsync { signature += " async" }
+            if let typedThrow { signature += " throws(\(typedThrow))" }
+            else if isThrowing { signature += " throws" }
+            if let returnType { signature += " -> \(returnType)" }
+            var lines = [signature.isEmpty ? "{" : "{ \(signature) in"]
+            lines.append(contentsOf: body.map { line in
+                let depth = line.prefix { $0 == "\t" }.count
+                return String(repeating: indentString, count: indent + 1 + depth) + line.dropFirst(depth)
+            })
+            lines.append(String(repeating: indentString, count: indent) + "}")
             return lines
         }
     }
