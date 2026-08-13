@@ -11,6 +11,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
     var typedThrow: String?
     var isRethrowing = false
     var isAsync = false
+    var modifiers: [SwiftFunctionModifier] = []
     var initPrefix: String = ""
     var name: String
     var generics: [SwiftGeneric]
@@ -49,9 +50,11 @@ public struct SwiftFunctionBuilder: ~Copyable {
         }
         let staticStr = isStatic ? "static " : ""
         let overrideStr = isOverride ? "override " : ""
-        let consumingStr = isConsuming ? "consuming " : ""
+        var renderedModifiers = modifiers.sorted { $0.sortOrder < $1.sortOrder }.map(\.rendered)
+        if isConsuming && !renderedModifiers.contains("consuming") { renderedModifiers.append("consuming") }
+        let modifiersStr = renderedModifiers.isEmpty ? "" : renderedModifiers.joined(separator: " ") + " "
         let mutatingStr = isMutating ? "mutating " : ""
-        var line = "\(attributesStr)\(accessLevelStr)\(overrideStr)\(staticStr)\(consumingStr)\(mutatingStr)\(nameStr)\(genericsStr)"
+        var line = "\(attributesStr)\(accessLevelStr)\(modifiersStr)\(overrideStr)\(staticStr)\(mutatingStr)\(nameStr)\(genericsStr)"
         if asGetter {
             guard let returnType else {
                 Swift.assertionFailure("SwiftFunctionBuilder: getter requires an explicit return type. This is a codegen-template bug; check the caller of `appendMethod(asGetter: true, returnType: nil)`.")
@@ -331,9 +334,15 @@ public struct SwiftFunctionBuilder: ~Copyable {
     
     public mutating func appendFunction(
         attributes: String? = nil,
+        modifiers: [SwiftFunctionModifier] = [],
+        isThrowing: Bool = false,
+        typedThrow: String? = nil,
+        isRethrowing: Bool = false,
+        isAsync: Bool = false,
         name: String,
         generics: [SwiftGeneric] = [],
         arguments: [SwiftFunctionArgument] = [],
+        returnType: String? = nil,
         builder: (inout SwiftFunctionBuilder) -> Void
     ) {
         let outerAttributes = self.attributes
@@ -347,12 +356,13 @@ public struct SwiftFunctionBuilder: ~Copyable {
         let outerTypedThrow = self.typedThrow
         let outerIsRethrowing = self.isRethrowing
         let outerIsAsync = self.isAsync
+        let outerModifiers = self.modifiers
         let outerInitPrefix = self.initPrefix
         let outerName = self.name
         let outerGenerics = self.generics
         let outerArguments = self.arguments
         let outerReturnType = self.returnType
-        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, name: name, generics: generics, arguments: arguments, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
         self = SwiftFunctionBuilder(
@@ -367,6 +377,7 @@ public struct SwiftFunctionBuilder: ~Copyable {
             typedThrow: outerTypedThrow,
             isRethrowing: outerIsRethrowing,
             isAsync: outerIsAsync,
+            modifiers: outerModifiers,
             initPrefix: outerInitPrefix,
             name: outerName,
             generics: outerGenerics,

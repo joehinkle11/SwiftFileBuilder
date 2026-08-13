@@ -15,6 +15,33 @@ public enum SwiftParameterOwnership: String, Sendable {
     case `inout`
 }
 
+public enum SwiftFunctionModifier: Sendable {
+    case borrowing
+    case consuming
+    case nonisolated
+    case nonisolatedUnsafe
+    case unsafe
+
+    var rendered: String {
+        switch self {
+        case .borrowing: "borrowing"
+        case .consuming: "consuming"
+        case .nonisolated: "nonisolated"
+        case .nonisolatedUnsafe: "nonisolated(unsafe)"
+        case .unsafe: "unsafe"
+        }
+    }
+
+    var sortOrder: Int {
+        switch self {
+        case .nonisolated, .nonisolatedUnsafe: 0
+        case .unsafe: 1
+        case .borrowing: 2
+        case .consuming: 3
+        }
+    }
+}
+
 public struct SwiftFunctionArgument {
     public let outerLabel: String?
     public let name: String

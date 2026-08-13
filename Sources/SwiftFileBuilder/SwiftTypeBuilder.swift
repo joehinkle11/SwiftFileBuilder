@@ -191,6 +191,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         typedThrow: String? = nil,
         isRethrowing: Bool = false,
         isAsync: Bool = false,
+        modifiers: [SwiftFunctionModifier] = [],
         name: String,
         generics: [SwiftGeneric] = [],
         arguments: [SwiftFunctionArgument] = [],
@@ -202,7 +203,7 @@ public struct SwiftTypeBuilder<Kind: SwiftTypeBuilderKind>: ~Copyable {
         let typeName = self.name
         let typeGenerics = self.generics
         let typeIsFirstCase = self.isFirstCase
-        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, accessLevel: accessLevel, isStatic: isStatic, isOverride: isOverride, isConsuming: isConsuming, isMutating: isMutating, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, accessLevel: accessLevel, isStatic: isStatic, isOverride: isOverride, isConsuming: isConsuming, isMutating: isMutating, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
         self = SwiftTypeBuilder(kind: kind, accessLevel: typeAccessLevel, name: typeName, generics: typeGenerics, inheritedTypes: inheritedTypes, attributes: typeAttributes, isFirstCase: typeIsFirstCase, codeBuilder: funcBuilder.end())
