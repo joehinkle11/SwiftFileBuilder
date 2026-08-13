@@ -130,4 +130,32 @@ struct SwiftExpressionBuilderTests {
 
         """)
     }
+
+    @Test func closureParameterOwnershipAndSharedBodyProtocol() {
+        func addBody<Body: SwiftStatementBodyBuilder & ~Copyable>(_ body: inout Body) {
+            body.appendExpression { $0.append("observe(value)") }
+            body.appendReturn("value")
+        }
+
+        var file = SwiftFileBuilder()
+        file.appendFunction(name: "outer") { function in
+            function.appendExpression { expression in
+                expression.appendClosure(parameterDetails: [
+                    .init(name: "value", type: "Value", ownership: .borrowing),
+                    .init(name: "_"),
+                ]) { closure in
+                    addBody(&closure)
+                }
+            }
+        }
+        #expect(file.finalize() == """
+        func outer() {
+            { value: borrowing Value, _ in
+                observe(value)
+                return value
+            }
+        }
+
+        """)
+    }
 }

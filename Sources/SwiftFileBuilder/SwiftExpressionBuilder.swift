@@ -60,6 +60,24 @@ public struct SwiftExpressionBuilder {
             body: closure.finish()
         )
     }
+
+    public mutating func appendClosure(
+        parameterDetails: [SwiftClosureParameter],
+        isAsync: Bool = false,
+        isThrowing: Bool = false,
+        typedThrow: String? = nil,
+        returnType: String? = nil,
+        builder: (inout SwiftClosureExpressionBuilder) -> Void
+    ) {
+        appendClosure(
+            parameters: parameterDetails.map(\.rendered),
+            isAsync: isAsync,
+            isThrowing: isThrowing,
+            typedThrow: typedThrow,
+            returnType: returnType,
+            builder: builder
+        )
+    }
 }
 
 public struct SwiftCallExpressionBuilder {
@@ -99,9 +117,30 @@ public struct SwiftCallExpressionBuilder {
         arguments.append(SwiftCallArgument(label: label, expression: expression.expression))
     }
 
+    public mutating func appendClosureArgument(
+        label: String? = nil,
+        parameterDetails: [SwiftClosureParameter],
+        isAsync: Bool = false,
+        isThrowing: Bool = false,
+        typedThrow: String? = nil,
+        returnType: String? = nil,
+        builder: (inout SwiftClosureExpressionBuilder) -> Void
+    ) {
+        var expression = SwiftExpressionBuilder()
+        expression.appendClosure(
+            parameterDetails: parameterDetails,
+            isAsync: isAsync,
+            isThrowing: isThrowing,
+            typedThrow: typedThrow,
+            returnType: returnType,
+            builder: builder
+        )
+        arguments.append(SwiftCallArgument(label: label, expression: expression.expression))
+    }
+
 }
 
-public struct SwiftClosureExpressionBuilder: ~Copyable {
+public struct SwiftClosureExpressionBuilder: SwiftStatementBodyBuilder, ~Copyable {
     // Tabs are an internal, layout-independent indentation marker. They are
     // replaced with the destination builder's indentation string at render time.
     private var codeBuilder = SwiftCodeBuilder(indentString: "\t")
