@@ -17,11 +17,11 @@ public struct SwiftFunctionBuilder: ~Copyable {
     var name: String
     var generics: [SwiftGeneric]
     var arguments: [SwiftFunctionArgument]
+    var parameterLayout: SwiftFunctionParameterLayout = .compact
     var returnType: String?
     var codeBuilder: SwiftCodeBuilder
 
     mutating func start() {
-        let argumentsStr = arguments.map { $0.rendered }.joined(separator: ", ")
         var genericsStr = ""
         if generics.isEmpty == false {
             if asGetter {
@@ -70,7 +70,23 @@ public struct SwiftFunctionBuilder: ~Copyable {
             }
             line.append(": \(returnType)")
         } else {
-            line.append("(\(argumentsStr))")
+            switch parameterLayout {
+            case .compact:
+                line.append("(\(arguments.map { $0.rendered }.joined(separator: ", ")))")
+            case .multiline:
+                if arguments.isEmpty {
+                    line.append("()")
+                    break
+                }
+                line.append("(")
+                codeBuilder.append(line: line)
+                codeBuilder.indent()
+                for argument in arguments {
+                    codeBuilder.append(line: argument.rendered + ",")
+                }
+                codeBuilder.outdent()
+                line = ")"
+            }
             if isAsync {
                 line += " async"
             }
@@ -127,13 +143,8 @@ public struct SwiftFunctionBuilder: ~Copyable {
         }
     }
     
-    public mutating func appendSwitch(_ test: String, builder: (inout SwiftSwitchBuilder) -> Void) {
-        codeBuilder.append(line: "switch \(test) {")
-        var switchBuilder = SwiftSwitchBuilder(parentFunction: self)
-        builder(&switchBuilder)
-        self = switchBuilder.parentFunction
-        codeBuilder.append(line: "}")
-    }
+    public mutating func _indentStatementBody() { codeBuilder.indent() }
+    public mutating func _outdentStatementBody() { codeBuilder.outdent() }
     
     public mutating func appendWhile(_ test: String, label: String? = nil, builder: (inout SwiftFunctionBuilder) -> Void) {
         var labelStr = ""
@@ -364,27 +375,6 @@ public struct SwiftFunctionBuilder: ~Copyable {
         codeBuilder.append(line: "} while \(test)")
     }
 
-    public mutating func appendDo(
-        catches: [(pattern: String?, builder: (inout SwiftFunctionBuilder) -> Void)] = [],
-        builder: (inout SwiftFunctionBuilder) -> Void
-    ) {
-        codeBuilder.append(line: "do {")
-        codeBuilder.indent()
-        builder(&self)
-        codeBuilder.outdent()
-        for (pattern, catchBuilder) in catches {
-            if let pattern {
-                codeBuilder.append(line: "} catch \(pattern) {")
-            } else {
-                codeBuilder.append(line: "} catch {")
-            }
-            codeBuilder.indent()
-            catchBuilder(&self)
-            codeBuilder.outdent()
-        }
-        codeBuilder.append(line: "}")
-    }
-
     public mutating func appendCompilerIf(
         _ condition: String,
         builder: (inout SwiftFunctionBuilder) -> Void,
@@ -416,50 +406,26 @@ public struct SwiftFunctionBuilder: ~Copyable {
         name: String,
         generics: [SwiftGeneric] = [],
         arguments: [SwiftFunctionArgument] = [],
+        parameterLayout: SwiftFunctionParameterLayout = .compact,
         returnType: String? = nil,
         builder: (inout SwiftFunctionBuilder) -> Void
     ) {
-        let outerAttributes = self.attributes
-        let outerAttributeLayout = self.attributeLayout
-        let outerAsGetter = self.asGetter
-        let outerAccessLevel = self.accessLevel
-        let outerIsStatic = self.isStatic
-        let outerIsOverride = self.isOverride
-        let outerIsConsuming = self.isConsuming
-        let outerIsMutating = self.isMutating
-        let outerIsThrowing = self.isThrowing
-        let outerTypedThrow = self.typedThrow
-        let outerIsRethrowing = self.isRethrowing
-        let outerIsAsync = self.isAsync
-        let outerModifiers = self.modifiers
-        let outerInitPrefix = self.initPrefix
-        let outerName = self.name
-        let outerGenerics = self.generics
-        let outerArguments = self.arguments
-        let outerReturnType = self.returnType
-        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, attributeLayout: attributeLayout, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
+        let outer = (
+            asGetter, attributes, attributeLayout, accessLevel, isStatic, isOverride,
+            isConsuming, isMutating, isThrowing, typedThrow, isRethrowing, isAsync,
+            modifiers, initPrefix, name, generics, arguments, parameterLayout, returnType
+        )
+        var funcBuilder = SwiftFunctionBuilder(attributes: attributes, attributeLayout: attributeLayout, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, parameterLayout: parameterLayout, returnType: returnType, codeBuilder: codeBuilder)
         funcBuilder.start()
         builder(&funcBuilder)
         self = SwiftFunctionBuilder(
-            asGetter: outerAsGetter,
-            attributes: outerAttributes,
-            attributeLayout: outerAttributeLayout,
-            accessLevel: outerAccessLevel,
-            isStatic: outerIsStatic,
-            isOverride: outerIsOverride,
-            isConsuming: outerIsConsuming,
-            isMutating: outerIsMutating,
-            isThrowing: outerIsThrowing,
-            typedThrow: outerTypedThrow,
-            isRethrowing: outerIsRethrowing,
-            isAsync: outerIsAsync,
-            modifiers: outerModifiers,
-            initPrefix: outerInitPrefix,
-            name: outerName,
-            generics: outerGenerics,
-            arguments: outerArguments,
-            returnType: outerReturnType,
-            codeBuilder: funcBuilder.end()
+            asGetter: outer.0, attributes: outer.1, attributeLayout: outer.2,
+            accessLevel: outer.3, isStatic: outer.4, isOverride: outer.5,
+            isConsuming: outer.6, isMutating: outer.7, isThrowing: outer.8,
+            typedThrow: outer.9, isRethrowing: outer.10, isAsync: outer.11,
+            modifiers: outer.12, initPrefix: outer.13, name: outer.14,
+            generics: outer.15, arguments: outer.16, parameterLayout: outer.17,
+            returnType: outer.18, codeBuilder: funcBuilder.end()
         )
     }
 }

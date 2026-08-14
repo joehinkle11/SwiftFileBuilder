@@ -53,6 +53,11 @@ public enum SwiftAttributeLayout: Sendable {
     case separateLines
 }
 
+public enum SwiftFunctionParameterLayout: Sendable {
+    case compact
+    case multiline
+}
+
 public struct SwiftFunctionArgument {
     public let outerLabel: String?
     public let name: String

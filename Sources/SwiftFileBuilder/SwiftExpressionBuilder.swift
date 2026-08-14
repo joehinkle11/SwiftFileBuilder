@@ -149,6 +149,8 @@ public struct SwiftClosureExpressionBuilder: SwiftStatementBodyBuilder, ~Copyabl
     public mutating func append(lines: [String]) { codeBuilder.append(lines: lines) }
     public mutating func append(content: String) { codeBuilder.append(content: content) }
     public mutating func appendNewline() { codeBuilder.appendNewline() }
+    public mutating func _indentStatementBody() { codeBuilder.indent() }
+    public mutating func _outdentStatementBody() { codeBuilder.outdent() }
 
     public mutating func appendReturn(_ expression: String? = nil) {
         codeBuilder.append(line: expression.map { "return \($0)" } ?? "return")
@@ -234,6 +236,41 @@ public struct SwiftClosureExpressionBuilder: SwiftStatementBodyBuilder, ~Copyabl
         builder(&self)
         codeBuilder.outdent()
         codeBuilder.append(line: "}")
+    }
+
+    public mutating func appendFunction(
+        attributes: String? = nil,
+        attributeLayout: SwiftAttributeLayout = .inline,
+        modifiers: [SwiftFunctionModifier] = [],
+        isThrowing: Bool = false,
+        typedThrow: String? = nil,
+        isRethrowing: Bool = false,
+        isAsync: Bool = false,
+        name: String,
+        generics: [SwiftGeneric] = [],
+        arguments: [SwiftFunctionArgument] = [],
+        parameterLayout: SwiftFunctionParameterLayout = .compact,
+        returnType: String? = nil,
+        builder: (inout SwiftFunctionBuilder) -> Void
+    ) {
+        var function = SwiftFunctionBuilder(
+            attributes: attributes,
+            attributeLayout: attributeLayout,
+            isThrowing: isThrowing,
+            typedThrow: typedThrow,
+            isRethrowing: isRethrowing,
+            isAsync: isAsync,
+            modifiers: modifiers,
+            name: name,
+            generics: generics,
+            arguments: arguments,
+            parameterLayout: parameterLayout,
+            returnType: returnType,
+            codeBuilder: codeBuilder
+        )
+        function.start()
+        builder(&function)
+        self = SwiftClosureExpressionBuilder(codeBuilder: function.end())
     }
 
     fileprivate consuming func finish() -> [String] {
