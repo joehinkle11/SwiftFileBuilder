@@ -124,11 +124,12 @@ public struct SwiftFileBuilder: ~Copyable {
         name: String,
         generics: [SwiftGeneric] = [],
         arguments: [SwiftFunctionArgument] = [],
+        parameterLayout: SwiftFunctionParameterLayout = .compact,
         returnType: String? = nil,
         builder: (inout SwiftFunctionBuilder) -> Void,
         variantsBuilder: (inout SwiftVariantsFunctionBuilder) -> Void = { _ in }
     ) {
-        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, attributeLayout: attributeLayout, accessLevel: accessLevel, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, returnType: returnType, codeBuilder: codeBuilder)
+        var funcBuilder = SwiftFunctionBuilder(asGetter: asGetter, attributes: attributes, attributeLayout: attributeLayout, accessLevel: accessLevel, isThrowing: isThrowing, typedThrow: typedThrow, isRethrowing: isRethrowing, isAsync: isAsync, modifiers: modifiers, name: name, generics: generics, arguments: arguments, parameterLayout: parameterLayout, returnType: returnType, codeBuilder: codeBuilder)
         var variants = SwiftVariantsFunctionBuilder(funcBuilder: funcBuilder)
         variantsBuilder(&variants)
         funcBuilder = variants.funcBuilder

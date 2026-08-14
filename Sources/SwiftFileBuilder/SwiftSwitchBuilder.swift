@@ -1,20 +1,26 @@
-public struct SwiftSwitchBuilder: ~Copyable {
-    var parentFunction: SwiftFunctionBuilder
+public struct SwiftSwitchBuilder<Body: SwiftStatementBodyBuilder & ~Copyable>: ~Copyable {
+    private var body: Body
+
+    init(body: consuming Body) {
+        self.body = body
+    }
+
+    consuming func takeBody() -> Body { body }
     
-    public mutating func appendCase(_ switchCase: String, where whereClause: String? = nil, trailingComment: String? = nil, builder: (inout SwiftFunctionBuilder) -> Void) {
+    public mutating func appendCase(_ switchCase: String, where whereClause: String? = nil, trailingComment: String? = nil, builder: (inout Body) -> Void) {
         var line = "case \(switchCase)"
         if let whereClause {
             line += " where \(whereClause)"
         }
         line += ":"
         if let trailingComment { line += "  // \(trailingComment)" }
-        parentFunction.append(line: line)
-        parentFunction.codeBuilder.indent()
-        builder(&parentFunction)
-        parentFunction.codeBuilder.outdent()
+        body.append(line: line)
+        body._indentStatementBody()
+        builder(&body)
+        body._outdentStatementBody()
     }
 
-    public mutating func appendCase(patterns: [String], where whereClause: String? = nil, trailingComment: String? = nil, builder: (inout SwiftFunctionBuilder) -> Void) {
+    public mutating func appendCase(patterns: [String], where whereClause: String? = nil, trailingComment: String? = nil, builder: (inout Body) -> Void) {
         appendCase(patterns.joined(separator: ", "), where: whereClause, trailingComment: trailingComment, builder: builder)
     }
 
@@ -22,7 +28,7 @@ public struct SwiftSwitchBuilder: ~Copyable {
         _ switchCase: String,
         where condition: (inout SwiftConditionBuilder) -> Void,
         trailingComment: String? = nil,
-        builder: (inout SwiftFunctionBuilder) -> Void
+        builder: (inout Body) -> Void
     ) {
         var conditionBuilder = SwiftConditionBuilder()
         condition(&conditionBuilder)
@@ -31,26 +37,26 @@ public struct SwiftSwitchBuilder: ~Copyable {
             appendCase(switchCase, where: lines.first, trailingComment: trailingComment, builder: builder)
             return
         }
-        parentFunction.append(line: "case \(switchCase) where \(lines[0])")
-        parentFunction.codeBuilder.indent()
+        body.append(line: "case \(switchCase) where \(lines[0])")
+        body._indentStatementBody()
         for (index, line) in lines.dropFirst().enumerated() {
             var rendered = line
             if index == lines.count - 2 {
                 rendered += ":"
                 if let trailingComment { rendered += "  // \(trailingComment)" }
             }
-            parentFunction.append(line: rendered)
+            body.append(line: rendered)
         }
-        builder(&parentFunction)
-        parentFunction.codeBuilder.outdent()
+        builder(&body)
+        body._outdentStatementBody()
     }
     
-    public mutating func appendDefault(trailingComment: String? = nil, builder: (inout SwiftFunctionBuilder) -> Void) {
+    public mutating func appendDefault(trailingComment: String? = nil, builder: (inout Body) -> Void) {
         var line = "default:"
         if let trailingComment { line += "  // \(trailingComment)" }
-        parentFunction.append(line: line)
-        parentFunction.codeBuilder.indent()
-        builder(&parentFunction)
-        parentFunction.codeBuilder.outdent()
+        body.append(line: line)
+        body._indentStatementBody()
+        builder(&body)
+        body._outdentStatementBody()
     }
 }
